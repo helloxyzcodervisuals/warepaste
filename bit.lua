@@ -2164,10 +2164,10 @@ local function CreateESP(player)
     
     local Gradient = Instance.new("UIGradient", HealthBar)
     Gradient.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Settings.Colors.HealthLow),
-        ColorSequenceKeypoint.new(0.5, Settings.Colors.HealthMid),
-        ColorSequenceKeypoint.new(1, Settings.Colors.HealthHigh)
-    })
+                        ColorSequenceKeypoint.new(0, Settings.Colors.HealthLow),
+                        ColorSequenceKeypoint.new(0.5, Settings.Colors.HealthMid),
+                        ColorSequenceKeypoint.new(1, Settings.Colors.HealthHigh)
+                    })
     Gradient.Rotation = -90
 
     local HealthText = Instance.new("TextLabel", Container)
@@ -2240,11 +2240,7 @@ RunService.RenderStepped:Connect(function()
                     obj.HealthBar.Size = UD2_Scale(1, HP)
                     obj.HealthBar.Position = UD2_Scale(0, 1 - HP)
                     
-                    Gradient.Color = ColorSequence.new({
-                        ColorSequenceKeypoint.new(0, Settings.Colors.HealthLow),
-                        ColorSequenceKeypoint.new(0.5, Settings.Colors.HealthMid),
-                        ColorSequenceKeypoint.new(1, Settings.Colors.HealthHigh)
-                    })
+                    
 
                     obj.HealthText.Text = math.floor(Hum.Health)
                     obj.HealthText.Position = UD2_Offset(-48, (1 - HP) * H - 6)
