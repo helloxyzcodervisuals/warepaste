@@ -2017,6 +2017,465 @@ SafeESPSection:AddSlider("SafeMaxDistance", {
         SafeESP.MaxDistance = v
     end
 })
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+local Settings = {
+    Enabled = true,
+    Box = true,
+    BoxTransparency = 0.5,
+    Skeleton = true,
+    HealthBar = true,
+    Names = true,
+    Distance = true,
+    Colors = {
+        Box = Color3.fromRGB(255, 255, 255),
+        Skeleton = Color3.fromRGB(255, 255, 255),
+        Name = Color3.fromRGB(255, 255, 255),
+        Distance = Color3.fromRGB(220, 220, 220),
+        HealthLow = Color3.fromRGB(255, 0, 0),
+        HealthMid = Color3.fromRGB(255, 255, 0),
+        HealthHigh = Color3.fromRGB(0, 255, 0)
+    }
+}
+
+local WorldSettings = {
+    Enabled = false,
+    ColorCorrection = false,
+    Brightness = 1,
+    Contrast = 0,
+    Saturation = 1,
+    TintColor = Color3.fromRGB(255, 255, 255),
+    Ambient = Color3.fromRGB(128, 128, 128),
+    OutdoorAmbient = Color3.fromRGB(128, 128, 128),
+    FogColor = Color3.fromRGB(192, 192, 192),
+    FogStart = 0,
+    FogEnd = 1000,
+    FogEnabled = false,
+    GlobalShadows = true
+}
+
+local Library = {
+    directory = "YourLibraryFolder",
+    folders = {"fonts", "configs"}
+}
+
+for _, path in next, Library.folders do 
+    if not isfolder(Library.directory .. "/" .. path) then makefolder(Library.directory .. "/" .. path) end
+end
+
+local fontPath = Library.directory .. "/fonts/main.ttf"
+local encodedPath = Library.directory .. "/fonts/main_encoded.ttf"
+local fontUrl = "https://github.com/f1nobe7650/Nebula/raw/refs/heads/main/Minecraftia-Regular.ttf"
+
+if not isfile(fontPath) then
+    writefile(fontPath, game:HttpGet(fontUrl))
+end
+
+local minecraftia = {
+    name = "Minecraftia",
+    faces = {{name = "Regular", weight = 400, style = "normal", assetId = getcustomasset(fontPath)}}
+}
+writefile(encodedPath, game:GetService("HttpService"):JSONEncode(minecraftia))
+Library.font = Font.new(getcustomasset(encodedPath))
+
+local WTVP, UD2_Offset, UD2_Scale = Camera.WorldToViewportPoint, UDim2.fromOffset, UDim2.fromScale
+
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.IgnoreGuiInset = true
+
+local R6_Rig = {
+    {"Head", "Torso"}, {"Torso", "Left Arm"}, {"Torso", "Right Arm"},
+    {"Torso", "Left Leg"}, {"Torso", "Right Leg"}
+}
+
+local R15_Rig = {
+    {"Head", "UpperTorso"}, {"UpperTorso", "LowerTorso"}, {"LowerTorso", "LeftUpperLeg"},
+    {"LeftUpperLeg", "LeftLowerLeg"}, {"LeftLowerLeg", "LeftFoot"}, {"LowerTorso", "RightUpperLeg"},
+    {"RightUpperLeg", "RightLowerLeg"}, {"RightLowerLeg", "RightFoot"}, {"UpperTorso", "LeftUpperArm"},
+    {"LeftUpperArm", "LeftLowerArm"}, {"LeftLowerArm", "LeftHand"}, {"UpperTorso", "RightUpperArm"},
+    {"RightUpperArm", "RightLowerArm"}, {"RightLowerArm", "RightHand"}
+}
+
+local Cache = {}
+local ColorCorrection = Instance.new("ColorCorrectionEffect", Lighting)
+
+local function UpdateWorld()
+    if not WorldSettings.Enabled then
+        ColorCorrection.Enabled = false
+        return
+    end
+    
+    if WorldSettings.ColorCorrection then
+        ColorCorrection.Enabled = true
+        ColorCorrection.Brightness = WorldSettings.Brightness
+        ColorCorrection.Contrast = WorldSettings.Contrast
+        ColorCorrection.Saturation = WorldSettings.Saturation
+        ColorCorrection.TintColor = WorldSettings.TintColor
+    else
+        ColorCorrection.Enabled = false
+    end
+    
+    Lighting.Ambient = WorldSettings.Ambient
+    Lighting.OutdoorAmbient = WorldSettings.OutdoorAmbient
+    Lighting.FogColor = WorldSettings.FogColor
+    Lighting.FogStart = WorldSettings.FogStart
+    Lighting.FogEnd = WorldSettings.FogEnd
+    Lighting.FogEnabled = WorldSettings.FogEnabled
+    Lighting.GlobalShadows = WorldSettings.GlobalShadows
+end
+
+local function CreateESP(player)
+    if player == LocalPlayer then return end
+    local Obj = {Lines = {}}
+
+    local Container = Instance.new("Frame", ScreenGui)
+    Container.BackgroundTransparency = 1
+    Container.Visible = false
+    
+    local Box = Instance.new("Frame", Container)
+    Box.BorderSizePixel = 0
+    Box.BackgroundColor3 = Settings.Colors.Box
+    Box.BackgroundTransparency = Settings.BoxTransparency
+    Box.Size = UD2_Scale(1, 1)
+    local BoxStroke = Instance.new("UIStroke", Box)
+    BoxStroke.Color = Color3.new(0,0,0)
+    BoxStroke.Thickness = 1
+
+    local HealthOutline = Instance.new("Frame", Container)
+    HealthOutline.BackgroundColor3 = Color3.new(0, 0, 0)
+    HealthOutline.BorderSizePixel = 0
+    
+    local HealthInner = Instance.new("Frame", HealthOutline)
+    HealthInner.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    HealthInner.BorderSizePixel = 0
+    HealthInner.Position = UD2_Offset(1, 1)
+
+    local HealthBar = Instance.new("Frame", HealthInner)
+    HealthBar.BorderSizePixel = 0
+    HealthBar.Size = UD2_Scale(1, 1)
+    
+    local Gradient = Instance.new("UIGradient", HealthBar)
+    Gradient.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, Settings.Colors.HealthLow),
+        ColorSequenceKeypoint.new(0.5, Settings.Colors.HealthMid),
+        ColorSequenceKeypoint.new(1, Settings.Colors.HealthHigh)
+    })
+    Gradient.Rotation = -90
+
+    local HealthText = Instance.new("TextLabel", Container)
+    HealthText.BackgroundTransparency = 1
+    HealthText.FontFace = Library.font
+    HealthText.TextColor3 = Color3.new(1, 1, 1)
+    HealthText.TextSize = 12
+    HealthText.TextStrokeTransparency = 0
+    HealthText.TextXAlignment = Enum.TextXAlignment.Right
+    HealthText.Size = UD2_Offset(40, 12)
+
+    local NameLabel = Instance.new("TextLabel", ScreenGui)
+    NameLabel.BackgroundTransparency = 1
+    NameLabel.FontFace = Library.font
+    NameLabel.TextColor3 = Settings.Colors.Name
+    NameLabel.TextSize = 13
+    NameLabel.TextStrokeTransparency = 0
+    
+    local DistanceLabel = Instance.new("TextLabel", ScreenGui)
+    DistanceLabel.BackgroundTransparency = 1
+    DistanceLabel.FontFace = Library.font
+    DistanceLabel.TextColor3 = Settings.Colors.Distance
+    DistanceLabel.TextSize = 11
+    DistanceLabel.TextStrokeTransparency = 0
+
+    for i = 1, 15 do
+        local L = Instance.new("Frame", ScreenGui)
+        L.BorderSizePixel = 0
+        L.BackgroundColor3 = Settings.Colors.Skeleton
+        L.AnchorPoint = Vector2.new(0.5, 0.5)
+        L.Visible = false
+        Obj.Lines[i] = L
+    end
+
+    Obj.Container, Obj.HealthBar, Obj.HealthOutline, Obj.HealthInner, Obj.HealthText, Obj.NameLabel, Obj.DistanceLabel = Container, HealthBar, HealthOutline, HealthInner, HealthText, NameLabel, DistanceLabel
+    Cache[player] = Obj
+end
+
+RunService.RenderStepped:Connect(function()
+    UpdateWorld()
+    
+    local CamCF = Camera.CFrame.Position
+    local TanFOV = math.tan(math.rad(Camera.FieldOfView * 0.5)) * 2
+
+    for player, obj in next, Cache do
+        local Char = player.Character
+        local Hum = Char and Char:FindFirstChildOfClass("Humanoid")
+        local Root = Char and Char:FindFirstChild("HumanoidRootPart")
+
+        if Settings.Enabled and Root and Hum and Hum.Health > 0 then
+            local Pos, OnScreen = WTVP(Camera, Root.Position)
+            if OnScreen then
+                local Scale = 1 / (Pos.Z * TanFOV) * 100
+                local W, H = 45 * Scale, 65 * Scale
+                local HP = Hum.Health / Hum.MaxHealth
+                
+                obj.Container.Visible = Settings.Box
+                if Settings.Box then
+                    obj.Container.Position = UD2_Offset(Pos.X - (W*0.5), Pos.Y - (H*0.5))
+                    obj.Container.Size = UD2_Offset(W, H)
+                    obj.Container.BackgroundColor3 = Settings.Colors.Box
+                    obj.Container.BackgroundTransparency = Settings.BoxTransparency
+                end
+
+                obj.HealthOutline.Visible = Settings.HealthBar
+                if Settings.HealthBar then
+                    obj.HealthOutline.Position = UD2_Offset(-6, -1)
+                    obj.HealthOutline.Size = UD2_Offset(4, H + 2)
+                    obj.HealthInner.Size = UD2_Offset(2, H)
+                    obj.HealthBar.Size = UD2_Scale(1, HP)
+                    obj.HealthBar.Position = UD2_Scale(0, 1 - HP)
+                    
+                    Gradient.Color = ColorSequence.new({
+                        ColorSequenceKeypoint.new(0, Settings.Colors.HealthLow),
+                        ColorSequenceKeypoint.new(0.5, Settings.Colors.HealthMid),
+                        ColorSequenceKeypoint.new(1, Settings.Colors.HealthHigh)
+                    })
+
+                    obj.HealthText.Text = math.floor(Hum.Health)
+                    obj.HealthText.Position = UD2_Offset(-48, (1 - HP) * H - 6)
+                end
+
+                obj.NameLabel.Visible = Settings.Names
+                if Settings.Names then
+                    obj.NameLabel.Text = player.Name
+                    obj.NameLabel.Position = UD2_Offset(Pos.X, Pos.Y - (H*0.5) - 15)
+                    obj.NameLabel.TextColor3 = Settings.Colors.Name
+                end
+
+                obj.DistanceLabel.Visible = Settings.Distance
+                if Settings.Distance then
+                    obj.DistanceLabel.Text = math.floor((CamCF - Root.Position).Magnitude) .. "m"
+                    obj.DistanceLabel.Position = UD2_Offset(Pos.X, Pos.Y + (H*0.5) + 5)
+                    obj.DistanceLabel.TextColor3 = Settings.Colors.Distance
+                end
+
+                local Rig = Hum.RigType == Enum.HumanoidRigType.R15 and R15_Rig or R6_Rig
+                for i = 1, 15 do
+                    local Bone = Rig[i]
+                    if Bone and Settings.Skeleton then
+                        local p1, p2 = Char:FindFirstChild(Bone[1]), Char:FindFirstChild(Bone[2])
+                        if p1 and p2 then
+                            local v1, o1 = WTVP(Camera, p1.Position)
+                            local v2, o2 = WTVP(Camera, p2.Position)
+                            if o1 and o2 then
+                                local s, e = Vector2.new(v1.X, v1.Y), Vector2.new(v2.X, v2.Y)
+                                local diff = e - s
+                                obj.Lines[i].Visible = true
+                                obj.Lines[i].BackgroundColor3 = Settings.Colors.Skeleton
+                                obj.Lines[i].Size = UD2_Offset(diff.Magnitude, 1)
+                                obj.Lines[i].Position = UD2_Offset((s.X + e.X)/2, (s.Y + e.Y)/2)
+                                obj.Lines[i].Rotation = math.deg(math.atan2(diff.Y, diff.X))
+                                continue
+                            end
+                        end
+                    end
+                    obj.Lines[i].Visible = false
+                end
+                continue
+            end
+        end
+        obj.Container.Visible, obj.NameLabel.Visible, obj.DistanceLabel.Visible = false, false, false
+        for i=1, 15 do obj.Lines[i].Visible = false end
+    end
+end)
+
+Players.PlayerAdded:Connect(CreateESP)
+for _, p in next, Players:GetPlayers() do CreateESP(p) end
+
+local VisualTab = Tabs.Main:AddTab("Visuals")
+
+local ESPGroup = VisualTab:AddLeftGroupbox("ESP Settings")
+
+ESPGroup:AddToggle("ESPToggle", {
+    Text = "Enable ESP",
+    Default = Settings.Enabled,
+    Callback = function(v) Settings.Enabled = v end
+})
+
+ESPGroup:AddDivider()
+
+ESPGroup:AddToggle("BoxToggle", {
+    Text = "Box",
+    Default = Settings.Box,
+    Callback = function(v) Settings.Box = v end
+}):AddColorPicker("BoxColor", {
+    Default = Settings.Colors.Box,
+    Title = "Box Color",
+    Callback = function(c) Settings.Colors.Box = c end
+})
+
+ESPGroup:AddSlider("BoxTransparency", {
+    Text = "Box Transparency",
+    Default = Settings.BoxTransparency * 100,
+    Min = 0,
+    Max = 100,
+    Rounding = 1,
+    Suffix = "%",
+    Callback = function(v) Settings.BoxTransparency = v / 100 end
+})
+
+ESPGroup:AddToggle("SkeletonToggle", {
+    Text = "Skeleton",
+    Default = Settings.Skeleton,
+    Callback = function(v) Settings.Skeleton = v end
+}):AddColorPicker("SkeletonColor", {
+    Default = Settings.Colors.Skeleton,
+    Title = "Skeleton Color",
+    Callback = function(c) Settings.Colors.Skeleton = c end
+})
+
+ESPGroup:AddToggle("HealthBarToggle", {
+    Text = "Health Bar",
+    Default = Settings.HealthBar,
+    Callback = function(v) Settings.HealthBar = v end
+})
+
+ESPGroup:AddLabel("Health Colors"):AddColorPicker("HealthLowColor", {
+    Default = Settings.Colors.HealthLow,
+    Title = "Low Health Color",
+    Callback = function(c) Settings.Colors.HealthLow = c end
+}):AddColorPicker("HealthMidColor", {
+    Default = Settings.Colors.HealthMid,
+    Title = "Mid Health Color",
+    Callback = function(c) Settings.Colors.HealthMid = c end
+}):AddColorPicker("HealthHighColor", {
+    Default = Settings.Colors.HealthHigh,
+    Title = "High Health Color",
+    Callback = function(c) Settings.Colors.HealthHigh = c end
+})
+
+ESPGroup:AddToggle("NamesToggle", {
+    Text = "Names",
+    Default = Settings.Names,
+    Callback = function(v) Settings.Names = v end
+}):AddColorPicker("NameColor", {
+    Default = Settings.Colors.Name,
+    Title = "Name Color",
+    Callback = function(c) Settings.Colors.Name = c end
+})
+
+ESPGroup:AddToggle("DistanceToggle", {
+    Text = "Distance",
+    Default = Settings.Distance,
+    Callback = function(v) Settings.Distance = v end
+}):AddColorPicker("DistanceColor", {
+    Default = Settings.Colors.Distance,
+    Title = "Distance Color",
+    Callback = function(c) Settings.Colors.Distance = c end
+})
+
+local WorldGroup = VisualTab:AddRightGroupbox("World Settings")
+
+WorldGroup:AddToggle("WorldToggle", {
+    Text = "Enable World Effects",
+    Default = WorldSettings.Enabled,
+    Callback = function(v) WorldSettings.Enabled = v end
+})
+
+WorldGroup:AddDivider()
+
+WorldGroup:AddToggle("ColorCorrectionToggle", {
+    Text = "Color Correction",
+    Default = WorldSettings.ColorCorrection,
+    Callback = function(v) WorldSettings.ColorCorrection = v end
+})
+
+WorldGroup:AddSlider("Brightness", {
+    Text = "Brightness",
+    Default = WorldSettings.Brightness * 100,
+    Min = 0,
+    Max = 200,
+    Rounding = 1,
+    Suffix = "%",
+    Callback = function(v) WorldSettings.Brightness = v / 100 end
+})
+
+WorldGroup:AddSlider("Contrast", {
+    Text = "Contrast",
+    Default = WorldSettings.Contrast * 100,
+    Min = -100,
+    Max = 100,
+    Rounding = 1,
+    Suffix = "%",
+    Callback = function(v) WorldSettings.Contrast = v / 100 end
+})
+
+WorldGroup:AddSlider("Saturation", {
+    Text = "Saturation",
+    Default = WorldSettings.Saturation * 100,
+    Min = 0,
+    Max = 200,
+    Rounding = 1,
+    Suffix = "%",
+    Callback = function(v) WorldSettings.Saturation = v / 100 end
+})
+
+WorldGroup:AddLabel("Tint Color"):AddColorPicker("TintColor", {
+    Default = WorldSettings.TintColor,
+    Title = "Tint Color",
+    Callback = function(c) WorldSettings.TintColor = c end
+})
+
+WorldGroup:AddDivider()
+
+WorldGroup:AddLabel("Ambient Colors"):AddColorPicker("AmbientColor", {
+    Default = WorldSettings.Ambient,
+    Title = "Ambient Color",
+    Callback = function(c) WorldSettings.Ambient = c end
+}):AddColorPicker("OutdoorAmbientColor", {
+    Default = WorldSettings.OutdoorAmbient,
+    Title = "Outdoor Ambient",
+    Callback = function(c) WorldSettings.OutdoorAmbient = c end
+})
+
+WorldGroup:AddDivider()
+
+WorldGroup:AddToggle("FogToggle", {
+    Text = "Fog",
+    Default = WorldSettings.FogEnabled,
+    Callback = function(v) WorldSettings.FogEnabled = v end
+}):AddColorPicker("FogColor", {
+    Default = WorldSettings.FogColor,
+    Title = "Fog Color",
+    Callback = function(c) WorldSettings.FogColor = c end
+})
+
+WorldGroup:AddSlider("FogStart", {
+    Text = "Fog Start",
+    Default = WorldSettings.FogStart,
+    Min = 0,
+    Max = 1000,
+    Rounding = 1,
+    Callback = function(v) WorldSettings.FogStart = v end
+})
+
+WorldGroup:AddSlider("FogEnd", {
+    Text = "Fog End",
+    Default = WorldSettings.FogEnd,
+    Min = 100,
+    Max = 5000,
+    Rounding = 1,
+    Callback = function(v) WorldSettings.FogEnd = v end
+})
+
+WorldGroup:AddToggle("GlobalShadows", {
+    Text = "Global Shadows",
+    Default = WorldSettings.GlobalShadows,
+    Callback = function(v) WorldSettings.GlobalShadows = v end
+})
 local UIGroup = Tabs.UI:AddLeftGroupbox("UI Settings")
 
 UIGroup:AddToggle("KeybindMenu", {
