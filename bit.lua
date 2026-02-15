@@ -1146,7 +1146,7 @@ local OnlineDropdown = TargetGroup:AddDropdown("OnlinePlayers", {
         end
     end
 })
-TargetListGroup:AddButton({
+TargetGroup:AddButton({
     Text = "Add to Target List",
     Func = function()
         local name = tostring(currentSelectedPlayer)
@@ -1160,7 +1160,7 @@ TargetListGroup:AddButton({
     end
 })
 
-TargetListGroup:AddButton({
+TargetGroup:AddButton({
     Text = "Add to Whitelist",
     Func = function()
         local name = tostring(currentSelectedPlayer)
@@ -1173,7 +1173,7 @@ TargetListGroup:AddButton({
         end
     end
 })
-TargetListGroup:AddButton({
+TargetGroup:AddButton({
     Text = "Clear Selected Player",
     Func = function()
         local name = tostring(currentSelectedPlayer)
@@ -1196,7 +1196,7 @@ TargetListGroup:AddButton({
     end
 })
 
-TargetListGroup:AddButton({
+TargetGroup:AddButton({
     Text = "Clear All Lists",
     Func = function()
         table.clear(TargetList)
