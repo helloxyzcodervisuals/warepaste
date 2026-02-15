@@ -813,6 +813,7 @@ local function shootAtTarget(targetHead)
     
     if ammo.Value <= 0 then 
         autoReload()
+        Library:Notify("reloading...")
         return false 
     end
     
@@ -834,14 +835,19 @@ local function shootAtTarget(targetHead)
     local GNX_S = events:FindFirstChild("GNX_S")
     local ZFKLF__H = events:FindFirstChild("ZFKLF__H")
     
-    if not GNX_S or not ZFKLF__H then return false end
+    if not GNX_S or not ZFKLF__H then 
+        Library:Notify("Failed to find remote events")
+        return false 
+    end
     
     local args1 = {tick(), randomKey, tool, "FDS9I83", bestShootPos, {hitDirection}, false}
     local args2 = {"🧈", tool, randomKey, 1, targetHead, hitPosition, hitDirection}
     
     local targetPlayer = Players:GetPlayerFromCharacter(targetHead.Parent)
     if targetPlayer then 
-        createHitNotification(tool.Name, (bestShootPos - localHead.Position).Magnitude, targetPlayer.Name, false) 
+        local offset = (bestShootPos - localHead.Position).Magnitude
+        local health = targetPlayer.Character and targetPlayer.Character:FindFirstChild("Humanoid") and math.floor(targetPlayer.Character.Humanoid.Health) or 0
+        Library:Notify("Hit " .. targetPlayer.Name .. " [" .. health .. "HP] " .. string.format("%.1f", offset) .. "m")
         playHitSound() 
     end
     
@@ -912,7 +918,7 @@ local Window = Library:CreateWindow({
 
 local Tabs = {
     Main = Window:AddTab("Ragebot"),
-    Targets = Window:AddTab("Targets"),
+    --Targets = Window:AddTab("Targets"),
     UI = Window:AddTab("UI")
 }
 
@@ -1140,66 +1146,66 @@ local OnlineDropdown = TargetGroup:AddDropdown("OnlinePlayers", {
         end
     end
 })
-
-TargetGroup:AddButton({
+TargetListGroup:AddButton({
     Text = "Add to Target List",
     Func = function()
         local name = tostring(currentSelectedPlayer)
         if name and name ~= "nil" then
-            for i, v in ipairs(Whitelist) do if v == name then table.remove(Whitelist, i) break end end
-            local exists = false
-            for _, v in ipairs(TargetList) do if v == name then exists = true break end end
-            if not exists then 
+            if not table.contains(TargetList, name) then
                 table.insert(TargetList, name)
                 TargetListDropdown:SetValues(TargetList)
+                Library:Notify("Added " .. name .. " to Target List")
             end
         end
     end
 })
 
-TargetGroup:AddButton({
+TargetListGroup:AddButton({
     Text = "Add to Whitelist",
     Func = function()
         local name = tostring(currentSelectedPlayer)
         if name and name ~= "nil" then
-            for i, v in ipairs(TargetList) do if v == name then table.remove(TargetList, i) break end end
-            local exists = false
-            for _, v in ipairs(Whitelist) do if v == name then exists = true break end end
-            if not exists then 
+            if not table.contains(Whitelist, name) then
                 table.insert(Whitelist, name)
                 WhitelistDropdown:SetValues(Whitelist)
+                Library:Notify("Added " .. name .. " to Whitelist")
             end
         end
     end
 })
-
-TargetGroup:AddButton({
+TargetListGroup:AddButton({
     Text = "Clear Selected Player",
     Func = function()
         local name = tostring(currentSelectedPlayer)
         if name and name ~= "nil" then
             for i, v in ipairs(TargetList) do if v == name then 
                 table.remove(TargetList, i) 
-               -- TargetListDropdown:SetValues(TargetList)
+              --  TargetListDropdown:SetValues(TargetList)
+                Library:Notify("Removed " .. name .. " from Target List")
                 break 
             end end
             for i, v in ipairs(Whitelist) do if v == name then 
                 table.remove(Whitelist, i) 
-               -- WhitelistDropdown:SetValues(Whitelist)
+              --  WhitelistDropdown:SetValues(Whitelist)
+                  Library:Notify("Removed " .. name .. " from Whitelist")
                 break 
             end end
+        else
+            Library:Notify("No player selected")
         end
     end
 })
 
-TargetGroup:AddButton({
+TargetListGroup:AddButton({
     Text = "Clear All Lists",
     Func = function()
         table.clear(TargetList)
         table.clear(Whitelist)
+      --  TargetListDropdown:SetValues({})
+      --  WhitelistDropdown:SetValues({})
+        Library:Notify("Cleared all lists")
     end
 })
-
 
 Players.PlayerAdded:Connect(function(player)
     if player ~= LocalPlayer then
