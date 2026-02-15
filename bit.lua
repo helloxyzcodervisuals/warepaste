@@ -1,5 +1,5 @@
 repeat task.wait() until game:IsLoaded()
---sus.cc
+--sus.gg
 local function isAdonisAC(tab) 
     return rawget(tab,"Detected") and typeof(rawget(tab,"Detected"))=="function" and rawget(tab,"RLocked") 
 end
@@ -76,7 +76,7 @@ local CustomFont = vc()
 local TargetList = {}
 local Whitelist = {}
 
-local function tableContains(t, value)
+local function tablecontains(t, value)
     for _, v in ipairs(t) do if v == value then return true end end
     return false
 end
@@ -1144,7 +1144,7 @@ TargetGroup:AddButton({
     Func = function()
         local name = tostring(currentSelectedPlayer)
         if name and name ~= "nil" then
-            if not table.Contains(TargetList, name) then
+            if not tablecontains(TargetList, name) then
                 table.insert(TargetList, name)
                 TargetListDropdown:SetValues(TargetList)
                 Library:Notify("Added " .. name .. " to Target List")
@@ -1158,7 +1158,7 @@ TargetGroup:AddButton({
     Func = function()
         local name = tostring(currentSelectedPlayer)
         if name and name ~= "nil" then
-            if not table.Contains(Whitelist, name) then
+            if not tablecontains(Whitelist, name) then
                 table.insert(Whitelist, name)
                 WhitelistDropdown:SetValues(Whitelist)
                 Library:Notify("Added " .. name .. " to Whitelist")
