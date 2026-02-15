@@ -422,8 +422,7 @@ local function getClosestTarget()
     PerformanceCache.LastTargetUpdate = currentTime
     
     return closest
-end
-
+end 
 local function wallbang()
     local localHead = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head")
     if not localHead then return nil, nil, false end
@@ -438,11 +437,13 @@ local function wallbang()
     local targetPos = target.Position
     local currentTime = tick()
     
-    local cacheKey = tostring(startPos) .. tostring(targetPos)
+    local cacheKey = string.format("%.0f_%.0f_%.0f_%.0f_%.0f_%.0f",
+        startPos.X, startPos.Y, startPos.Z,
+        targetPos.X, targetPos.Y, targetPos.Z)
     
     if PerformanceCache.WallbangResults[cacheKey] then
         local cached = PerformanceCache.WallbangResults[cacheKey]
-        if currentTime - cached.time < PerformanceCache.WallbangCacheDuration then
+        if currentTime - cached.time < 0.3 then
             cachedBestPositions = {
                 shootPos = cached.shootPos,
                 hitPos = cached.hitPos,
@@ -455,6 +456,11 @@ local function wallbang()
     
     if not ConfigTable.Ragebot.Wallbang then
         cachedBestPositions = {shootPos = startPos, hitPos = targetPos, target = target}
+        PerformanceCache.WallbangResults[cacheKey] = {
+            shootPos = startPos,
+            hitPos = targetPos,
+            time = currentTime
+        }
         return startPos, targetPos, false
     end
     
@@ -462,144 +468,130 @@ local function wallbang()
     raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
     raycastParams.FilterDescendantsInstances = {LocalPlayer.Character}
     
-    local function findSmartBounce()
-        local directions = {
-            Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0),
-            Vector3.new(0, 1, 0), Vector3.new(0, -1, 0),
-            Vector3.new(0, 0, 1), Vector3.new(0, 0, -1),
-            Vector3.new(1, 1, 0), Vector3.new(-1, 1, 0)
-        }
+    local candidates = {}
+    
+    for attempt = 1,85 do
+        local angle = (attempt / 25) * math.pi * 2
+        local radius = ConfigTable.Ragebot.ShootRange * (0.7 + math.random() * 0.3)
+        local yRadius = ConfigTable.Ragebot.ShootRange * 0.2 * (0.8 + math.random() * 0.4)
         
-        for _, dir in ipairs(directions) do
-            local bouncePos = startPos + dir * (ConfigTable.Ragebot.ShootRange * 0.8)
+        local offsetX = math.cos(angle + math.random() * 0.3) * radius
+        local offsetZ = math.sin(angle + math.random() * 0.3) * radius
+        local offsetY = math.sin(angle * 3) * yRadius + math.random(-2, 2)
+        
+        local shootTry = Vector3.new(
+            startPos.X + offsetX,
+            startPos.Y + offsetY,
+            startPos.Z + offsetZ
+        )
+        
+        if checkClearPath(startPos, shootTry) then
+            local hitAngle = (attempt / 25) * math.pi * 2 + math.random() * 0.5
+            local hitRadius = ConfigTable.Ragebot.HitRange * (0.7 + math.random() * 0.3)
+            local hitYRadius = ConfigTable.Ragebot.HitRange * 0.2 * (0.8 + math.random() * 0.4)
             
-            if checkClearPath(startPos, bouncePos) then
-                local rayToTarget = Workspace:Raycast(bouncePos, (targetPos - bouncePos).Unit * (targetPos - bouncePos).Magnitude, raycastParams)
-                if not rayToTarget then
-                    return bouncePos, targetPos
+            local hitOffsetX = math.cos(hitAngle) * hitRadius
+            local hitOffsetZ = math.sin(hitAngle) * hitRadius
+            local hitOffsetY = math.sin(hitAngle * 3) * hitYRadius + math.random(-2, 2)
+            
+            local hitTry = Vector3.new(
+                targetPos.X + hitOffsetX,
+                targetPos.Y + hitOffsetY,
+                targetPos.Z + hitOffsetZ
+            )
+            
+            if checkClearPath(shootTry, hitTry) then
+                local distToStart = (shootTry - startPos).Magnitude
+                local distToTarget = (hitTry - targetPos).Magnitude
+                local score = distToStart * 0.4 + distToTarget * 0.6
+                
+                table.insert(candidates, {
+                    shootPos = shootTry,
+                    hitPos = hitTry,
+                    score = score
+                })
+            end
+        end
+    end
+    
+    if #candidates == 0 then
+        local undergroundY = -15
+        local yOffset = startPos.Y - undergroundY
+        
+        for attempt = 1, 60 do
+            local xzRange = ConfigTable.Ragebot.ShootRange + (startPos.Y - undergroundY)
+            local xOffset = math.random(-xzRange, xzRange)
+            local zOffset = math.random(-xzRange, xzRange)
+            
+            local shootTry = Vector3.new(
+                startPos.X + xOffset,
+                undergroundY,
+                startPos.Z + zOffset
+            )
+            
+            if checkClearPath(startPos, shootTry) then
+                local hitXZRange = ConfigTable.Ragebot.HitRange + (targetPos.Y - undergroundY)
+                local xHitOffset = math.random(-hitXZRange, hitXZRange)
+                local zHitOffset = math.random(-hitXZRange, hitXZRange)
+                
+                local hitTry = Vector3.new(
+                    targetPos.X + xHitOffset,
+                    undergroundY,
+                    targetPos.Z + zHitOffset
+                )
+                
+                if checkClearPath(shootTry, hitTry) then
+                    local distToStart = (shootTry - startPos).Magnitude
+                    local distToTarget = (hitTry - targetPos).Magnitude
+                    local score = distToStart * 0.3 + distToTarget * 0.7
+                    
+                    table.insert(candidates, {
+                        shootPos = shootTry,
+                        hitPos = hitTry,
+                        score = score
+                    })
                 end
             end
         end
-        
-        return nil, nil
     end
     
-    local function findAngleOffset()
-        local minAngle = -30
-        local maxAngle = 30
-        local steps = 60
-        
-        for i = 1, steps, 2 do
-            local angle = minAngle + (maxAngle - minAngle) * (i / steps)
-            local radians = math.rad(angle)
-            
-            local direction = (targetPos - startPos).Unit
-            local right = direction:Cross(Vector3.new(0, 1, 0)).Unit
-            local up = direction:Cross(right).Unit
-            
-            local offsetDir = right * math.cos(radians) + up * math.sin(radians)
-            local offsetDistance = ConfigTable.Ragebot.ShootRange * 0.6
-            
-            local shootPos = startPos + offsetDir * offsetDistance
-            
-            if checkClearPath(startPos, shootPos) then
-                local rayToTarget = Workspace:Raycast(shootPos, (targetPos - shootPos).Unit * (targetPos - shootPos).Magnitude, raycastParams)
-                if not rayToTarget then
-                    return shootPos, targetPos
-                end
-            end
-        end
-        
-        return nil, nil
+    if #candidates == 0 then
+        return nil, nil, false
     end
     
-    local function findQuickPath()
-        local attempts = 60
-        local shootPositions = {}
-        
-        for i = 1, attempts do
-            local shootX = startPos.X + math.random(-ConfigTable.Ragebot.ShootRange, ConfigTable.Ragebot.ShootRange)
-            local shootY = startPos.Y + math.random(-ConfigTable.Ragebot.ShootRange, ConfigTable.Ragebot.ShootRange)
-            local shootZ = startPos.Z + math.random(-ConfigTable.Ragebot.ShootRange, ConfigTable.Ragebot.ShootRange)
-            
-            local shootPos = Vector3.new(shootX, shootY, shootZ)
-            table.insert(shootPositions, shootPos)
-        end
-        
-        for _, shootPos in ipairs(shootPositions) do
-            local hitX = targetPos.X + math.random(-ConfigTable.Ragebot.HitRange, ConfigTable.Ragebot.HitRange)
-            local hitY = targetPos.Y + math.random(-ConfigTable.Ragebot.HitRange, ConfigTable.Ragebot.HitRange)
-            local hitZ = targetPos.Z + math.random(-ConfigTable.Ragebot.HitRange, ConfigTable.Ragebot.HitRange)
-            
-            local hitPos = Vector3.new(hitX, hitY, hitZ)
-            
-            if checkClearPath(startPos, shootPos) and checkClearPath(shootPos, hitPos) then
-                local finalRay = Workspace:Raycast(shootPos, (hitPos - shootPos).Unit * (hitPos - shootPos).Magnitude, raycastParams)
-                if not finalRay then
-                    return shootPos, hitPos
-                end
-            end
-        end
-        
-        return nil, nil
-    end
+    table.sort(candidates, function(a, b)
+        return a.score < b.score
+    end)
     
-    local shootPos, hitPos
-    
-    if math.random(1, 100) <= 40 then
-        shootPos, hitPos = findSmartBounce()
-    end
-    
-    if not shootPos then
-        shootPos, hitPos = findAngleOffset()
-    end
-    
-    if not shootPos then
-        shootPos, hitPos = findQuickPath()
-    end
-    
-    if not shootPos then
-        local fallbackY = math.random(-16, -14)
-        local shootX = startPos.X + math.random(-3, 3)
-        local shootZ = startPos.Z + math.random(-2, 3)
-        local hitX = targetPos.X + math.random(-3, 3)
-        local hitZ = targetPos.Z + math.random(-3, 3)
-        
-        shootPos = Vector3.new(shootX, fallbackY, shootZ)
-        hitPos = Vector3.new(hitX, fallbackY, hitZ)
-    end
+    local best = candidates[1]
     
     PerformanceCache.WallbangResults[cacheKey] = {
-        shootPos = shootPos,
-        hitPos = hitPos,
+        shootPos = best.shootPos,
+        hitPos = best.hitPos,
         time = currentTime
     }
     
-    if #PerformanceCache.WallbangResults > PerformanceCache.MaxCacheSize then
-        local oldestKey = nil
-        local oldestTime = currentTime
-        
+    if #PerformanceCache.WallbangResults > 150 then
+        local toRemove = {}
         for k, v in pairs(PerformanceCache.WallbangResults) do
-            if v.time < oldestTime then
-                oldestTime = v.time
-                oldestKey = k
+            if currentTime - v.time > 2 then
+                table.insert(toRemove, k)
             end
         end
-        
-        if oldestKey then
-            PerformanceCache.WallbangResults[oldestKey] = nil
+        for _, k in ipairs(toRemove) do
+            PerformanceCache.WallbangResults[k] = nil
         end
     end
     
     cachedBestPositions = {
-        shootPos = shootPos,
-        hitPos = hitPos,
+        shootPos = best.shootPos,
+        hitPos = best.hitPos,
         target = target,
         lastCalcTime = currentTime
     }
     
-    return shootPos, hitPos, false
-end
+    return best.shootPos, best.hitPos, false
+end    
 
 local function createHitNotification(toolName, offsetValue, playerName, usedCache)
     if not ConfigTable.Ragebot.HitNotify then return end
