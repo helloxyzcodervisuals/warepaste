@@ -1,5 +1,5 @@
 repeat task.wait() until game:IsLoaded()
---sus.net
+
 local function isAdonisAC(tab) 
     return rawget(tab,"Detected") and typeof(rawget(tab,"Detected"))=="function" and rawget(tab,"RLocked") 
 end
@@ -1742,7 +1742,7 @@ MovementSection:AddSlider("JumpPowerValue", {
     Callback = function(v) jumpPowerValue = v end
 })
 
-local WorldSection = Tabs.Misc:AddLeftGroupbox("World")
+local WorldSection = Tabs.Misc:AddRightGroupbox("World")
 
 WorldSection:AddToggle("ForceTimeEnabled", {
     Text = "Force Time",
@@ -1769,7 +1769,7 @@ WorldSection:AddSlider("ForceTimeValue", {
     end
 })
 
-local ToolsSection = Tabs.Misc:AddLeftGroupbox("Tools")
+local ToolsSection = Tabs.Misc:AddRightGroupbox("Tools")
 
 ToolsSection:AddToggle("LoopFOVEnabled", {
     Text = "Loop FOV",
@@ -2004,7 +2004,7 @@ end
 
 Workspace.DescendantAdded:Connect(onSafeAdded)
 
-local SafeESPSection = MiscTab:AddRightGroupbox("Safe ESP")
+local SafeESPSection = Tabs.Misc:AddRightGroupbox("Safe")
 
 SafeESPSection:AddToggle("SafeESPEnabled", {
     Text = "Enable Safe ESP",
