@@ -1144,7 +1144,7 @@ TargetGroup:AddButton({
     Func = function()
         local name = tostring(currentSelectedPlayer)
         if name and name ~= "nil" then
-            if not table.contains(TargetList, name) then
+            if not table.Contains(TargetList, name) then
                 table.insert(TargetList, name)
                 TargetListDropdown:SetValues(TargetList)
                 Library:Notify("Added " .. name .. " to Target List")
@@ -1158,7 +1158,7 @@ TargetGroup:AddButton({
     Func = function()
         local name = tostring(currentSelectedPlayer)
         if name and name ~= "nil" then
-            if not table.contains(Whitelist, name) then
+            if not table.Contains(Whitelist, name) then
                 table.insert(Whitelist, name)
                 WhitelistDropdown:SetValues(Whitelist)
                 Library:Notify("Added " .. name .. " to Whitelist")
