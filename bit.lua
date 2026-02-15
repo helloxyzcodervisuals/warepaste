@@ -903,6 +903,7 @@ local Window = Library:CreateWindow({
 local Tabs = {
     Main = Window:AddTab("Ragebot"),
     Misc = Window:AddTab("Misc"),
+    Visual = Window:AddTab("Visual"),
     --Targets = Window:AddTab("Targets"),
     UI = Window:AddTab("UI")
 }
@@ -2293,9 +2294,7 @@ end)
 Players.PlayerAdded:Connect(CreateESP)
 for _, p in next, Players:GetPlayers() do CreateESP(p) end
 
-local VisualTab = Tabs.Main:AddTab("Visuals")
-
-local ESPGroup = VisualTab:AddLeftGroupbox("ESP Settings")
+local ESPGroup = Tabs.Visual:AddLeftGroupbox("ESP Settings")
 
 ESPGroup:AddToggle("ESPToggle", {
     Text = "Enable ESP",
@@ -2375,7 +2374,7 @@ ESPGroup:AddToggle("DistanceToggle", {
     Callback = function(c) Settings.Colors.Distance = c end
 })
 
-local WorldGroup = VisualTab:AddRightGroupbox("World Settings")
+local WorldGroup = Tabs.Visual:AddRightGroupbox("World Settings")
 
 WorldGroup:AddToggle("WorldToggle", {
     Text = "Enable World Effects",
