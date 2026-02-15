@@ -2137,7 +2137,9 @@ local function CreateESP(player)
     local Container = Instance.new("Frame", ScreenGui)
     Container.BackgroundTransparency = 1
     Container.Visible = false
-    
+    Settings.Colors.HealthLow = Settings.Colors.HealthLow or Color3.fromRGB(255, 0, 0)
+    Settings.Colors.HealthMid = Settings.Colors.HealthMid or Color3.fromRGB(255, 255, 0)
+    Settings.Colors.HealthHigh = Settings.Colors.HealthHigh or Color3.fromRGB(0, 255, 0)
     local Box = Instance.new("Frame", Container)
     Box.BorderSizePixel = 0
     Box.BackgroundColor3 = Settings.Colors.Box
