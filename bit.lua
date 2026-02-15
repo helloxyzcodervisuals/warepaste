@@ -1225,7 +1225,615 @@ Players.PlayerRemoving:Connect(function(player)
         end end
     end
 end)
+local Lighting = game:GetService("Lighting")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CoreGui = game:GetService("CoreGui")
+local LocalPlayer = Players.LocalPlayer
 
+local forceTimeEnabled = false
+local forceTimeValue = 12
+local forceTimeConnection = nil
+
+local speedEnabled = false
+local speedValue = 50
+local speedConnection = nil
+
+local flyEnabled = false
+local flySpeed = 50
+local flyConnection = nil
+
+local jumpPowerEnabled = false
+local jumpPowerValue = 100
+local jumpPowerConnection = nil
+
+local loopFOVEnabled = false
+local fovConnection = nil
+
+local infStaminaEnabled = false
+local infStaminaHook = nil
+
+local noFallEnabled = false
+local noFallHook = nil
+
+local lockpickEnabled = false
+local lockpickAddedConnection = nil
+
+local instantPromptEnabled = false
+local instantPromptConnection = nil
+
+local autoDoorEnabled = false
+local doorConnection = nil
+
+local hideHeadEnabled = false
+local hideHeadHook = nil
+local hideHeadConnection = nil
+
+local QuickUIFrame = Instance.new("Frame")
+QuickUIFrame.Name = "QuickUIFrame"
+QuickUIFrame.Size = UDim2.new(0, 80, 0, 30)
+QuickUIFrame.Position = UDim2.new(0, 10, 0, 50)
+QuickUIFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+QuickUIFrame.BackgroundTransparency = 0.5
+QuickUIFrame.BorderSizePixel = 0
+
+local QuickUIText = Instance.new("TextButton")
+QuickUIText.Name = "QuickUIText"
+QuickUIText.Size = UDim2.new(1, 0, 1, 0)
+QuickUIText.BackgroundTransparency = 1
+QuickUIText.Text = "FLY OFF"
+QuickUIText.TextColor3 = Color3.fromRGB(255, 50, 50)
+QuickUIText.Font = Enum.Font.GothamBold
+QuickUIText.TextSize = 12
+QuickUIText.Parent = QuickUIFrame
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "QuickUIScreen"
+ScreenGui.Parent = CoreGui
+QuickUIFrame.Parent = ScreenGui
+
+local function enableForceTime()
+    if forceTimeConnection then forceTimeConnection:Disconnect() end
+    forceTimeConnection = RunService.RenderStepped:Connect(function()
+        if not forceTimeEnabled then return end
+        Lighting.ClockTime = forceTimeValue
+        Lighting.TimeOfDay = string.format("%02d:00:00", forceTimeValue)
+    end)
+end
+
+local function disableForceTime()
+    if forceTimeConnection then forceTimeConnection:Disconnect() forceTimeConnection = nil end
+end
+
+local function enableSpeed()
+    if speedConnection then speedConnection:Disconnect() end
+    speedConnection = RunService.RenderStepped:Connect(function()
+        if not speedEnabled then return end
+        local character = LocalPlayer.Character
+        if not character then return end
+        local humanoid = character:FindFirstChild("Humanoid")
+        if not humanoid then return end
+        humanoid.WalkSpeed = speedValue
+    end)
+end
+
+local function disableSpeed()
+    if speedConnection then speedConnection:Disconnect() speedConnection = nil end
+    local character = LocalPlayer.Character
+    if character then 
+        local humanoid = character:FindFirstChild("Humanoid") 
+        if humanoid then humanoid.WalkSpeed = 16 end 
+    end
+end
+
+local function startFlying()
+    local Char = LocalPlayer.Character
+    if not Char then return end
+    local Hum = Char:FindFirstChildOfClass("Humanoid")
+    local Root = Char:FindFirstChild("HumanoidRootPart")
+    if not Hum or not Root then return end
+    
+    local RagdollEvent = ReplicatedStorage:FindFirstChild("Events"):FindFirstChild("__RZDONL")
+    if not RagdollEvent then
+        RagdollEvent = ReplicatedStorage:WaitForChild("Events"):WaitForChild("__RZDONL")
+    end
+    
+    for _,child in ipairs(Char:GetDescendants()) do 
+        if child:IsA("Motor6D") then child.Enabled = false end 
+    end
+    
+    Hum.PlatformStand = true
+    Hum:ChangeState(Enum.HumanoidStateType.Freefall)
+    
+    local flyMotors = {}
+    for _,part in ipairs(Char:GetDescendants()) do
+        if part:IsA("BasePart") and part ~= Root then
+            local motor = Instance.new("Motor6D")
+            motor.Name = "FlyMotor"
+            motor.Part0 = Root
+            motor.Part1 = part
+            motor.C1 = CFrame.new()
+            motor.C0 = Root.CFrame:ToObjectSpace(part.CFrame)
+            motor.Parent = part
+            table.insert(flyMotors, motor)
+        end
+    end
+    
+    flyConnection = RunService.Heartbeat:Connect(function()
+        if not flyEnabled then
+            if flyConnection then flyConnection:Disconnect() flyConnection = nil end
+            Hum.PlatformStand = false
+            Root.Velocity = Vector3.new(0,0,0)
+            Hum:ChangeState(Enum.HumanoidStateType.Running)
+            for _,motor in ipairs(flyMotors) do motor:Destroy() end
+            for _,child in ipairs(Char:GetDescendants()) do 
+                if child:IsA("Motor6D") and child.Name ~= "FlyMotor" then child.Enabled = true end 
+            end
+            return
+        end
+        
+        local Cam = Workspace.CurrentCamera
+        if not Cam then return end
+        
+        local cameraLook = Cam.CFrame.LookVector
+        local IsMoving = Hum.MoveDirection.Magnitude > 0
+        local targetLook = Vector3.new(cameraLook.X, cameraLook.Y, cameraLook.Z)
+        
+        if targetLook.Magnitude > 0 then 
+            targetLook = targetLook.Unit 
+            Root.CFrame = CFrame.new(Root.Position, Root.Position + targetLook) 
+        end
+        
+        if IsMoving then
+            local moveVector = Vector3.new(cameraLook.X, cameraLook.Y, cameraLook.Z).Unit
+            Root.Velocity = moveVector * flySpeed
+            RagdollEvent:FireServer("__---r",Vector3.zero,CFrame.new(-4574,3,-443,0,0,1,0,1,0,-1,0,0),true)
+        else 
+            Root.Velocity = Vector3.new(0,0,0) 
+        end
+    end)
+end
+
+local function disableFlying()
+    flyEnabled = false
+    if flyConnection then 
+        flyConnection:Disconnect() 
+        flyConnection = nil 
+    end
+    
+    local Char = LocalPlayer.Character
+    if not Char then return end
+    
+    local Hum = Char:FindFirstChildOfClass("Humanoid")
+    local Root = Char:FindFirstChild("HumanoidRootPart")
+    
+    if Hum then
+        Hum.PlatformStand = false
+        Hum:ChangeState(Enum.HumanoidStateType.Running)
+    end
+    
+    if Root then
+        Root.Velocity = Vector3.new(0,0,0)
+    end
+    
+    for _, part in ipairs(Char:GetDescendants()) do
+        local motor = part:FindFirstChild("FlyMotor")
+        if motor then motor:Destroy() end
+    end
+    
+    for _, child in ipairs(Char:GetDescendants()) do 
+        if child:IsA("Motor6D") and child.Name ~= "FlyMotor" then 
+            child.Enabled = true 
+        end 
+    end
+end
+
+QuickUIText.MouseButton1Click:Connect(function()
+    flyEnabled = not flyEnabled
+    if flyEnabled then 
+        QuickUIText.Text = "FLY ON" 
+        QuickUIText.TextColor3 = Color3.fromRGB(50, 255, 50) 
+        startFlying()
+    else 
+        QuickUIText.Text = "FLY OFF" 
+        QuickUIText.TextColor3 = Color3.fromRGB(255, 50, 50) 
+        disableFlying() 
+    end
+end)
+
+local function enableJumpPower()
+    if jumpPowerConnection then jumpPowerConnection:Disconnect() end
+    jumpPowerConnection = RunService.Heartbeat:Connect(function()
+        if not jumpPowerEnabled then return end
+        if not LocalPlayer.Character then return end
+        local humanoid = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if not humanoid then return end
+        local hrp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        if humanoid:GetState() == Enum.HumanoidStateType.Jumping then 
+            hrp.Velocity = Vector3.new(hrp.Velocity.X, jumpPowerValue, hrp.Velocity.Z) 
+        end
+    end)
+end
+
+local function disableJumpPower()
+    if jumpPowerConnection then jumpPowerConnection:Disconnect() jumpPowerConnection = nil end
+end
+
+local function enableLoopFOV()
+    if fovConnection then fovConnection:Disconnect() end
+    fovConnection = RunService.RenderStepped:Connect(function()
+        if not loopFOVEnabled then return end
+        Workspace.CurrentCamera.FieldOfView = 120
+    end)
+end
+
+local function disableLoopFOV()
+    if fovConnection then fovConnection:Disconnect() fovConnection = nil end
+end
+
+local function enableInfStamina()
+    if infStaminaHook then return end
+    local module
+    for i,v in pairs(game:GetService("StarterPlayer").StarterPlayerScripts:GetDescendants()) do 
+        if v:IsA("ModuleScript") and v.Name == "XIIX" then 
+            module = v 
+            break 
+        end 
+    end
+    if module then
+        module = require(module)
+        local ac = module["XIIX"]
+        local glob = getfenv(ac)["_G"]
+        local stamina = getupvalues((getupvalues(glob["S_Check"]))[2])[1]
+        if stamina ~= nil then 
+            infStaminaHook = hookfunction(stamina,function() return 100,100 end) 
+        end
+    end
+end
+
+local function disableInfStamina()
+    if infStaminaHook then 
+        hookfunction(infStaminaHook, function() end)
+        infStaminaHook = nil 
+    end
+end
+
+local function enableNoFallDmg()
+    if noFallHook then return end
+    noFallHook = hookmetamethod(game,"__namecall",function(self,...)
+        local args = {...}
+        if getnamecallmethod() == "FireServer" and not checkcaller() and args[1] == "FlllD" and args[4] == false then 
+            args[2] = 0 
+            args[3] = 0 
+        end
+        return noFallHook(self,unpack(args))
+    end)
+end
+
+local function disableNoFallDmg()
+    if noFallHook then 
+        hookmetamethod(game,"__namecall",noFallHook) 
+        noFallHook = nil 
+    end
+end
+
+local function enableLockpick()
+    lockpickEnabled = true
+    local PlayerGui = LocalPlayer:FindFirstChild("PlayerGui")
+    if not PlayerGui then return end
+    local function lockpick(gui)
+        for _,a in pairs(gui:GetDescendants()) do
+            if a:IsA("ImageLabel") and a.Name == "Bar" and a.Parent.Name ~= "Attempts" then
+                local oldsize = a.Size
+                RunService.RenderStepped:Connect(function()
+                    if lockpickEnabled then a.Size = UDim2.new(0,280,0,280) else a.Size = oldsize end
+                end)
+            end
+        end
+    end
+    if lockpickAddedConnection then lockpickAddedConnection:Disconnect() end
+    lockpickAddedConnection = PlayerGui.ChildAdded:Connect(function(child) 
+        if child:IsA("ScreenGui") and child.Name == "LockpickGUI" then lockpick(child) end 
+    end)
+    for _,child in pairs(PlayerGui:GetChildren()) do 
+        if child:IsA("ScreenGui") and child.Name == "LockpickGUI" then lockpick(child) end 
+    end
+end
+
+local function disableLockpick()
+    lockpickEnabled = false
+    if lockpickAddedConnection then 
+        lockpickAddedConnection:Disconnect() 
+        lockpickAddedConnection = nil 
+    end
+end
+
+local function enableInstantPrompt()
+    instantPromptEnabled = true
+    for _,obj in pairs(game:GetDescendants()) do 
+        if obj:IsA("ProximityPrompt") then obj.HoldDuration = 0 end 
+    end
+    if instantPromptConnection then instantPromptConnection:Disconnect() end
+    instantPromptConnection = game.DescendantAdded:Connect(function(obj) 
+        if obj:IsA("ProximityPrompt") then task.wait() obj.HoldDuration = 0 end 
+    end)
+end
+
+local function disableInstantPrompt()
+    instantPromptEnabled = false
+    if instantPromptConnection then 
+        instantPromptConnection:Disconnect() 
+        instantPromptConnection = nil 
+    end
+    for _,obj in pairs(game:GetDescendants()) do 
+        if obj:IsA("ProximityPrompt") then obj.HoldDuration = 1 end 
+    end
+end
+
+local function enableAutoDoor()
+    autoDoorEnabled = true
+    if doorConnection then doorConnection:Disconnect() end
+    doorConnection = RunService.Heartbeat:Connect(function()
+        if not autoDoorEnabled then return end
+        if not LocalPlayer.Character then return end
+        local charRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if not charRoot then return end
+        local Map = Workspace:FindFirstChild("Map")
+        if not Map then return end
+        local Doors = Map:FindFirstChild("Doors")
+        if not Doors then return end
+        local closestDoor = nil
+        local closestDistance = 15
+        for _,door in pairs(Doors:GetChildren()) do
+            local knob = door:FindFirstChild("Knob1") or door:FindFirstChild("Knob2")
+            if knob then
+                local distance = (knob.Position - charRoot.Position).Magnitude
+                if distance < closestDistance then 
+                    closestDistance = distance 
+                    closestDoor = door 
+                end
+            end
+        end
+        if closestDoor then
+            local knob = closestDoor:FindFirstChild("Knob1") or closestDoor:FindFirstChild("Knob2")
+            local events = closestDoor:FindFirstChild("Events")
+            local toggleEvent = events and events:FindFirstChild("Toggle")
+            if knob and toggleEvent then 
+                local args = {"Open",knob} 
+                toggleEvent:FireServer(unpack(args)) 
+            end
+        end
+    end)
+end
+
+local function disableAutoDoor()
+    autoDoorEnabled = false
+    if doorConnection then doorConnection:Disconnect() doorConnection = nil end
+end
+
+local function lockNeckMotorForHideHead()
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local torso = character:FindFirstChild("Torso")
+    if not torso then return end
+    
+    local neck = torso:FindFirstChild("Neck")
+    if not neck or not neck:IsA("Motor6D") then return end
+    
+    if hideHeadConnection then hideHeadConnection:Disconnect() end
+    
+    hideHeadConnection = RunService.RenderStepped:Connect(function()
+        if not hideHeadEnabled then
+            if hideHeadConnection then hideHeadConnection:Disconnect() hideHeadConnection = nil end
+            return
+        end
+        neck.C0 = CFrame.new(0, 0, 0.75) * CFrame.Angles(math.rad(90), 0, 0)
+        neck.C1 = CFrame.new(0, 0.25, 0) * CFrame.Angles(0, 0, 0)
+    end)
+end
+
+local function restoreNeckMotorsForHideHead()
+    if hideHeadConnection then hideHeadConnection:Disconnect() hideHeadConnection = nil end
+end
+
+local function updateHideHeadHook()
+    if hideHeadEnabled then
+        if not hideHeadHook then
+            hideHeadHook = hookmetamethod(game, "__namecall", function(self, ...)
+                local methodName = getnamecallmethod()
+                if tostring(methodName) == "FireServer" then
+                    if self.Name == "MOVZREP" then 
+                        if hideHeadEnabled then
+                            local fixedArguments = {
+                                {
+                                    {
+                                        Vector3.new(-5721.2001953125,-5,971.5162353515625),
+                                        Vector3.new(-4181.38818359375,-6,11.123311996459961),
+                                        Vector3.new(0.006237113382667303,-6,-0.18136750161647797),
+                                        true,
+                                        true,
+                                        true,
+                                        false
+                                    },
+                                    false,
+                                    false,
+                                    15.8
+                                }
+                            }
+                            return hideHeadHook(self, table.unpack(fixedArguments))
+                        end
+                    end
+                end
+                return hideHeadHook(self, ...)
+            end)
+        end
+        lockNeckMotorForHideHead()
+    else
+        if hideHeadHook then
+            hookmetamethod(game, "__namecall", hideHeadHook)
+            hideHeadHook = nil
+        end
+        restoreNeckMotorsForHideHead()
+    end
+end
+
+local MiscTab = Tabs.Main:AddTab("Misc")
+
+local MovementSection = MiscTab:AddLeftGroupbox("Movement")
+
+MovementSection:AddToggle("SpeedEnabled", {
+    Text = "Speed",
+    Default = false,
+    Callback = function(v)
+        speedEnabled = v
+        if v then enableSpeed() else disableSpeed() end
+    end
+})
+
+MovementSection:AddSlider("SpeedValue", {
+    Text = "Speed Value",
+    Default = 50,
+    Min = 16,
+    Max = 200,
+    Rounding = 1,
+    Callback = function(v) speedValue = v end
+})
+
+MovementSection:AddToggle("FlyEnabled", {
+    Text = "Fly",
+    Default = false,
+    Callback = function(v)
+        flyEnabled = v
+        QuickUIText.Text = v and "FLY ON" or "FLY OFF"
+        QuickUIText.TextColor3 = v and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(255, 50, 50)
+        if v then startFlying() else disableFlying() end
+    end
+})
+
+MovementSection:AddSlider("FlySpeed", {
+    Text = "Fly Speed",
+    Default = 50,
+    Min = 10,
+    Max = 200,
+    Rounding = 1,
+    Callback = function(v) flySpeed = v end
+})
+
+MovementSection:AddToggle("JumpPowerEnabled", {
+    Text = "Jump Power",
+    Default = false,
+    Callback = function(v)
+        jumpPowerEnabled = v
+        if v then enableJumpPower() else disableJumpPower() end
+    end
+})
+
+MovementSection:AddSlider("JumpPowerValue", {
+    Text = "Jump Value",
+    Default = 100,
+    Min = 50,
+    Max = 300,
+    Rounding = 1,
+    Callback = function(v) jumpPowerValue = v end
+})
+
+local WorldSection = MiscTab:AddRightGroupbox("World")
+
+WorldSection:AddToggle("ForceTimeEnabled", {
+    Text = "Force Time",
+    Default = false,
+    Callback = function(v)
+        forceTimeEnabled = v
+        if v then enableForceTime() else disableForceTime() end
+    end
+})
+
+WorldSection:AddSlider("ForceTimeValue", {
+    Text = "Time",
+    Default = 12,
+    Min = 0,
+    Max = 24,
+    Rounding = 1,
+    Suffix = "hr",
+    Callback = function(v)
+        forceTimeValue = v
+        if forceTimeEnabled then
+            Lighting.ClockTime = forceTimeValue
+            Lighting.TimeOfDay = string.format("%02d:00:00", forceTimeValue)
+        end
+    end
+})
+
+local ToolsSection = MiscTab:AddLeftGroupbox("Tools")
+
+ToolsSection:AddToggle("LoopFOVEnabled", {
+    Text = "Loop FOV",
+    Default = false,
+    Callback = function(v)
+        loopFOVEnabled = v
+        if v then enableLoopFOV() else disableLoopFOV() end
+    end
+})
+
+ToolsSection:AddToggle("InfStaminaEnabled", {
+    Text = "Inf Stamina",
+    Default = false,
+    Callback = function(v)
+        infStaminaEnabled = v
+        if v then enableInfStamina() else disableInfStamina() end
+    end
+})
+
+ToolsSection:AddToggle("NoFallEnabled", {
+    Text = "No Fall Damage",
+    Default = false,
+    Callback = function(v)
+        noFallEnabled = v
+        if v then enableNoFallDmg() else disableNoFallDmg() end
+    end
+})
+
+ToolsSection:AddToggle("LockpickEnabled", {
+    Text = "No Fail Lockpick",
+    Default = false,
+    Callback = function(v)
+        lockpickEnabled = v
+        if v then enableLockpick() else disableLockpick() end
+    end
+})
+
+ToolsSection:AddToggle("InstantPromptEnabled", {
+    Text = "Instant Prompt",
+    Default = false,
+    Callback = function(v)
+        instantPromptEnabled = v
+        if v then enableInstantPrompt() else disableInstantPrompt() end
+    end
+})
+
+ToolsSection:AddToggle("AutoDoorEnabled", {
+    Text = "Auto Door",
+    Default = false,
+    Callback = function(v)
+        autoDoorEnabled = v
+        if v then enableAutoDoor() else disableAutoDoor() end
+    end
+})
+
+ToolsSection:AddToggle("HideHeadEnabled", {
+    Text = "Hide Head",
+    Default = false,
+    Callback = function(v)
+        hideHeadEnabled = v
+        updateHideHeadHook()
+    end
+})
 local UIGroup = Tabs.UI:AddLeftGroupbox("UI Settings")
 
 UIGroup:AddToggle("KeybindMenu", {
