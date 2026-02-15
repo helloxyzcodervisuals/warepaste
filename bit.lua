@@ -516,10 +516,9 @@ local function wallbang()
     
     if #candidates == 0 then
         local undergroundY = -15
-        local yOffset = startPos.Y - undergroundY
         
         for attempt = 1, 60 do
-            local xzRange = ConfigTable.Ragebot.ShootRange + (startPos.Y - undergroundY)
+            local xzRange = ConfigTable.Ragebot.ShootRange - undergroundY
             local xOffset = math.random(-xzRange, xzRange)
             local zOffset = math.random(-xzRange, xzRange)
             
@@ -529,28 +528,26 @@ local function wallbang()
                 startPos.Z + zOffset
             )
             
-            if checkClearPath(startPos, shootTry) then
-                local hitXZRange = ConfigTable.Ragebot.HitRange + (targetPos.Y - undergroundY)
-                local xHitOffset = math.random(-hitXZRange, hitXZRange)
-                local zHitOffset = math.random(-hitXZRange, hitXZRange)
+            local hitXZRange = ConfigTable.Ragebot.HitRange - undergroundY
+            local xHitOffset = math.random(-hitXZRange, hitXZRange)
+            local zHitOffset = math.random(-hitXZRange, hitXZRange)
+            
+            local hitTry = Vector3.new(
+                targetPos.X + xHitOffset,
+                undergroundY,
+                targetPos.Z + zHitOffset
+            )
+            
+            if checkClearPath(shootTry, hitTry) then
+                local distToStart = (shootTry - startPos).Magnitude
+                local distToTarget = (hitTry - targetPos).Magnitude
+                local score = distToStart * 0.3 + distToTarget * 0.7
                 
-                local hitTry = Vector3.new(
-                    targetPos.X + xHitOffset,
-                    undergroundY,
-                    targetPos.Z + zHitOffset
-                )
-                
-                if checkClearPath(shootTry, hitTry) then
-                    local distToStart = (shootTry - startPos).Magnitude
-                    local distToTarget = (hitTry - targetPos).Magnitude
-                    local score = distToStart * 0.3 + distToTarget * 0.7
-                    
-                    table.insert(candidates, {
-                        shootPos = shootTry,
-                        hitPos = hitTry,
-                        score = score
-                    })
-                end
+                table.insert(candidates, {
+                    shootPos = shootTry,
+                    hitPos = hitTry,
+                    score = score
+                })
             end
         end
     end
