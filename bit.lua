@@ -1,5 +1,5 @@
 repeat task.wait() until game:IsLoaded()
-
+--j
 local function isAdonisAC(tab) 
     return rawget(tab,"Detected") and typeof(rawget(tab,"Detected"))=="function" and rawget(tab,"RLocked") 
 end
