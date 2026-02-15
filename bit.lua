@@ -1,4 +1,5 @@
 repeat task.wait() until game:IsLoaded()
+--sus
 local function isAdonisAC(tab) 
     return rawget(tab,"Detected") and typeof(rawget(tab,"Detected"))=="function" and rawget(tab,"RLocked") 
 end
@@ -867,9 +868,6 @@ coroutine.wrap(function()
     while wait() do
         if not (ConfigTable.Ragebot.Enabled and LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Head") and getClosestTarget()) then continue end
         
-        if not UserInputService:IsKeyDown(ConfigTable.Ragebot.Keybind) then
-            continue
-        end
         
         local target = getClosestTarget()
         local currentTool
@@ -928,11 +926,6 @@ RagebotGroup:AddToggle("RagebotEnabled", {
     Text = "Enabled",
     Default = false,
     Callback = function(v) ConfigTable.Ragebot.Enabled = v end
-}):AddKeyPicker("RagebotKey", {
-    Default = "LeftAlt",
-    Text = "Activation Key",
-    Mode = "Hold",
-    Callback = function(key) ConfigTable.Ragebot.Keybind = key end
 })
 
 RagebotGroup:AddDivider()
