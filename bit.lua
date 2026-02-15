@@ -470,7 +470,7 @@ local function wallbang()
     
     local candidates = {}
     
-    for attempt = 1,85 do
+    for attempt = 1, 100 do
         local angle = (attempt / 25) * math.pi * 2
         local radius = ConfigTable.Ragebot.ShootRange * (0.7 + math.random() * 0.3)
         local yRadius = ConfigTable.Ragebot.ShootRange * 0.2 * (0.8 + math.random() * 0.4)
@@ -518,9 +518,8 @@ local function wallbang()
         local undergroundY = -15
         
         for attempt = 1, 60 do
-            local xzRange = ConfigTable.Ragebot.ShootRange - undergroundY
-            local xOffset = math.random(-xzRange, xzRange)
-            local zOffset = math.random(-xzRange, xzRange)
+            local xOffset = math.random(-3, 3)
+            local zOffset = math.random(-3, 3)
             
             local shootTry = Vector3.new(
                 startPos.X + xOffset,
@@ -528,9 +527,8 @@ local function wallbang()
                 startPos.Z + zOffset
             )
             
-            local hitXZRange = ConfigTable.Ragebot.HitRange - undergroundY
-            local xHitOffset = math.random(-hitXZRange, hitXZRange)
-            local zHitOffset = math.random(-hitXZRange, hitXZRange)
+            local xHitOffset = math.random(-3, 3)
+            local zHitOffset = math.random(-3, 3)
             
             local hitTry = Vector3.new(
                 targetPos.X + xHitOffset,
@@ -588,8 +586,7 @@ local function wallbang()
     }
     
     return best.shootPos, best.hitPos, false
-end    
-
+end
 local function createHitNotification(toolName, offsetValue, playerName, usedCache)
     if not ConfigTable.Ragebot.HitNotify then return end
     
