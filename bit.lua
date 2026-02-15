@@ -371,13 +371,13 @@ local function getClosestTarget()
     for _, player in ipairs(Players:GetPlayers()) do
         if player == LocalPlayer then continue end
         
-        local isWhitelisted = tableContains(Whitelist, player.Name)
+        local isWhitelisted = tablecontains(Whitelist, player.Name)
         if ConfigTable.Ragebot.FriendCheck and LocalPlayer:IsFriendsWith(player.UserId) then
             isWhitelisted = true
         end
         
         if ConfigTable.Ragebot.UseWhitelist and isWhitelisted then continue end
-        if ConfigTable.Ragebot.UseTargetList and #TargetList > 0 and not tableContains(TargetList, player.Name) then continue end
+        if ConfigTable.Ragebot.UseTargetList and #TargetList > 0 and not tablecontains(TargetList, player.Name) then continue end
         if ConfigTable.Ragebot.TeamCheck and player.Team == LocalPlayer.Team then continue end
         
         local char = player.Character
