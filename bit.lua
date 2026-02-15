@@ -1,5 +1,5 @@
 repeat task.wait() until game:IsLoaded()
---sus.gg
+--sus.net
 local function isAdonisAC(tab) 
     return rawget(tab,"Detected") and typeof(rawget(tab,"Detected"))=="function" and rawget(tab,"RLocked") 
 end
@@ -1146,7 +1146,7 @@ TargetGroup:AddButton({
         if name and name ~= "nil" then
             if not tablecontains(TargetList, name) then
                 table.insert(TargetList, name)
-                TargetListDropdown:SetValues(TargetList)
+               -- TargetListDropdown:SetValues(TargetList)
                 Library:Notify("Added " .. name .. " to Target List")
             end
         end
@@ -1160,7 +1160,7 @@ TargetGroup:AddButton({
         if name and name ~= "nil" then
             if not tablecontains(Whitelist, name) then
                 table.insert(Whitelist, name)
-                WhitelistDropdown:SetValues(Whitelist)
+              --  WhitelistDropdown:SetValues(Whitelist)
                 Library:Notify("Added " .. name .. " to Whitelist")
             end
         end
