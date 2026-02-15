@@ -916,7 +916,7 @@ local Window = Library:CreateWindow({
 
 local Tabs = {
     Main = Window:AddTab("Ragebot"),
-    Misc = Window:AddTab("Misc")
+    Misc = Window:AddTab("Misc"),
     --Targets = Window:AddTab("Targets"),
     UI = Window:AddTab("UI")
 }
