@@ -916,6 +916,7 @@ local Window = Library:CreateWindow({
 
 local Tabs = {
     Main = Window:AddTab("Ragebot"),
+    Misc = Window:AddTab("Misc")
     --Targets = Window:AddTab("Targets"),
     UI = Window:AddTab("UI")
 }
@@ -1683,9 +1684,7 @@ local function updateHideHeadHook()
     end
 end
 
-local MiscTab = Tabs.Main:AddTab("Misc")
-
-local MovementSection = MiscTab:AddLeftGroupbox("Movement")
+local MovementSection = Tabs.Misc:AddLeftGroupbox("Movement")
 
 MovementSection:AddToggle("SpeedEnabled", {
     Text = "Speed",
@@ -1743,7 +1742,7 @@ MovementSection:AddSlider("JumpPowerValue", {
     Callback = function(v) jumpPowerValue = v end
 })
 
-local WorldSection = MiscTab:AddRightGroupbox("World")
+local WorldSection = Tabs.Misc:AddLeftGroupbox("World")
 
 WorldSection:AddToggle("ForceTimeEnabled", {
     Text = "Force Time",
@@ -1770,7 +1769,7 @@ WorldSection:AddSlider("ForceTimeValue", {
     end
 })
 
-local ToolsSection = MiscTab:AddLeftGroupbox("Tools")
+local ToolsSection = Tabs.Misc:AddLeftGroupbox("Tools")
 
 ToolsSection:AddToggle("LoopFOVEnabled", {
     Text = "Loop FOV",
@@ -1832,6 +1831,204 @@ ToolsSection:AddToggle("HideHeadEnabled", {
     Callback = function(v)
         hideHeadEnabled = v
         updateHideHeadHook()
+    end
+})
+local SafeESP = {
+    Enabled = false,
+    Cache = {},
+    HighlightObjs = {},
+    BillboardObjs = {},
+    Connection = nil,
+    MaxDistance = 250
+}
+
+local function createSafeESP(safePart)
+    if not safePart or not safePart.Parent then return end
+    
+    local highlight = Instance.new("Highlight")
+    highlight.Name = "SafeHighlight"
+    highlight.FillColor = Color3.fromRGB(255, 215, 0)
+    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+    highlight.FillTransparency = 0.5
+    highlight.OutlineTransparency = 0
+    highlight.Parent = safePart.Parent
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "SafeBillboard"
+    billboard.Size = UDim2.new(0, 120, 0, 35)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.AlwaysOnTop = true
+    billboard.Parent = safePart.Parent
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    frame.BackgroundTransparency = 0.2
+    frame.BorderSizePixel = 0
+    frame.Parent = billboard
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 4)
+    corner.Parent = frame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "SAFE"
+    label.TextColor3 = Color3.fromRGB(255, 215, 0)
+    label.TextStrokeTransparency = 0.3
+    label.Font = Enum.Font.Code
+    label.TextSize = 16
+    label.Parent = frame
+    
+    local distanceLabel = Instance.new("TextLabel")
+    distanceLabel.Size = UDim2.new(1, 0, 0, 15)
+    distanceLabel.Position = UDim2.new(0, 0, 1, 0)
+    distanceLabel.BackgroundTransparency = 1
+    distanceLabel.Text = ""
+    distanceLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    distanceLabel.Font = Enum.Font.Code
+    distanceLabel.TextSize = 12
+    distanceLabel.Parent = billboard
+    
+    SafeESP.HighlightObjs[safePart.Parent] = highlight
+    SafeESP.BillboardObjs[safePart.Parent] = billboard
+end
+
+local function updateSafeDistances()
+    if not SafeESP.Enabled then return end
+    
+    local camera = Workspace.CurrentCamera
+    if not camera then return end
+    
+    local cameraPos = camera.CFrame.Position
+    
+    for model, billboard in pairs(SafeESP.BillboardObjs) do
+        if model and model.PrimaryPart then
+            local distance = (model.PrimaryPart.Position - cameraPos).Magnitude
+            local distanceLabel = billboard:FindFirstChild("DistanceLabel")
+            
+            if distance <= SafeESP.MaxDistance then
+                billboard.Enabled = true
+                SafeESP.HighlightObjs[model].Enabled = true
+                if distanceLabel then
+                    distanceLabel.Text = math.floor(distance) .. "studs"
+                end
+            else
+                billboard.Enabled = false
+                SafeESP.HighlightObjs[model].Enabled = false
+            end
+        end
+    end
+end
+
+local function scanForSafes()
+    if not SafeESP.Enabled then return end
+    
+    local scanStart = tick()
+    local scanCount = 0
+    local maxScanTime = 0.01
+    
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if not SafeESP.Enabled then break end
+        if scanCount > 50 or tick() - scanStart > maxScanTime then
+            task.wait()
+            scanStart = tick()
+            scanCount = 0
+        end
+        
+        if obj:IsA("BasePart") and obj.Name then
+            local objName = obj.Name:lower()
+            if (objName:find("smallsafe") or objName:find("mediumsafe")) and not SafeESP.Cache[obj] then
+                SafeESP.Cache[obj] = true
+                createSafeESP(obj)
+                scanCount = scanCount + 1
+            end
+        end
+    end
+end
+
+local function clearSafeESP()
+    for _, highlight in pairs(SafeESP.HighlightObjs) do
+        if highlight then highlight:Destroy() end
+    end
+    for _, billboard in pairs(SafeESP.BillboardObjs) do
+        if billboard then billboard:Destroy() end
+    end
+    SafeESP.HighlightObjs = {}
+    SafeESP.BillboardObjs = {}
+    SafeESP.Cache = {}
+end
+
+local function enableSafeESP()
+    SafeESP.Enabled = true
+    if SafeESP.Connection then SafeESP.Connection:Disconnect() end
+    SafeESP.Connection = RunService.RenderStepped:Connect(function()
+        if not SafeESP.Enabled then return end
+        scanForSafes()
+        updateSafeDistances()
+    end)
+    
+    for _, obj in pairs(Workspace:GetDescendants()) do
+        if obj:IsA("BasePart") and obj.Name then
+            local objName = obj.Name:lower()
+            if objName:find("smallsafe") or objName:find("mediumsafe") then
+                SafeESP.Cache[obj] = true
+                createSafeESP(obj)
+                break
+            end
+        end
+    end
+end
+
+local function disableSafeESP()
+    SafeESP.Enabled = false
+    if SafeESP.Connection then
+        SafeESP.Connection:Disconnect()
+        SafeESP.Connection = nil
+    end
+    clearSafeESP()
+end
+
+local function onSafeAdded(obj)
+    if not SafeESP.Enabled then return end
+    if obj:IsA("BasePart") and obj.Name then
+        local objName = obj.Name:lower()
+        if (objName:find("smallsafe") or objName:find("mediumsafe")) and not SafeESP.Cache[obj] then
+            task.wait(0.05)
+            SafeESP.Cache[obj] = true
+            createSafeESP(obj)
+        end
+    end
+end
+
+Workspace.DescendantAdded:Connect(onSafeAdded)
+
+local SafeESPSection = MiscTab:AddRightGroupbox("Safe ESP")
+
+SafeESPSection:AddToggle("SafeESPEnabled", {
+    Text = "Enable Safe ESP",
+    Default = false,
+    Callback = function(v)
+        if v then
+            enableSafeESP()
+            Library:Notify("Safe ESP Enabled")
+        else
+            disableSafeESP()
+            Library:Notify("Safe ESP Disabled")
+        end
+    end
+})
+
+SafeESPSection:AddSlider("SafeMaxDistance", {
+    Text = "Max Distance",
+    Default = 250,
+    Min = 50,
+    Max = 500,
+    Rounding = 1,
+    Suffix = "studs",
+    Callback = function(v)
+        SafeESP.MaxDistance = v
     end
 })
 local UIGroup = Tabs.UI:AddLeftGroupbox("UI Settings")
