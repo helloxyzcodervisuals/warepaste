@@ -905,7 +905,7 @@ local Tabs = {
     Misc = Window:AddTab("Misc"),
     Visual = Window:AddTab("Visual"),
     --Targets = Window:AddTab("Targets"),
-    ['UI Settings'] = Window:AddTab("UI Setting")
+    --['UI Settings'] = Window:AddTab("UI Setting")
 }
 
 local RagebotGroup = Tabs.Main:AddLeftGroupbox("Ragebot Settings")
