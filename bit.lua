@@ -2598,7 +2598,7 @@ end)
 RunService.RenderStepped:Connect(UpdateLocalVisuals)
 
 -- UI Settings
-local MenuGroup = Tabs.UI:AddLeftGroupbox('Menu')
+local MenuGroup = Tabs.['UI Settings']:AddLeftGroupbox('Menu')
 
 MenuGroup:AddToggle("KeybindMenuOpen", { Default = Library.KeybindFrame.Visible, Text = "Open Keybind Menu", Callback = function(value) Library.KeybindFrame.Visible = value end})
 MenuGroup:AddToggle("ShowCustomCursor", {Text = "Custom Cursor", Default = true, Callback = function(Value) Library.ShowCustomCursor = Value end})
