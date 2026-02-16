@@ -2473,13 +2473,130 @@ WorldGroup:AddToggle("GlobalShadows", {
     Default = WorldSettings.GlobalShadows,
     Callback = function(v) WorldSettings.GlobalShadows = v end
 })
-local UIGroup = Tabs.UI:AddLeftGroupbox("UI Settings")
+local LocalVisualSettings = {
+    Enabled = false,
+    Chams = {
+        Enabled = false,
+        Color = Color3.fromRGB(0, 255, 255),
+        Transparency = 0.3,
+        Material = Enum.Material.ForceField
+    }
+}
 
-UIGroup:AddToggle("KeybindMenu", {
-    Text = "Open Keybind Menu",
-    Default = Library.KeybindFrame.Visible,
-    Callback = function(v) Library.KeybindFrame.Visible = v end
+local LocalVisualCache = {
+    Chams = {}
+}
+
+local function UpdateLocalVisuals()
+    if not LocalVisualSettings.Enabled then
+        for part, data in pairs(LocalVisualCache.Chams) do
+            if part and part.Parent then
+                part.Transparency = data.Transparency
+                part.Material = data.Material
+                part.Color = data.Color
+            end
+        end
+        LocalVisualCache.Chams = {}
+        return
+    end
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    if LocalVisualSettings.Chams.Enabled then
+        for _, part in ipairs(character:GetDescendants()) do
+            if part:IsA("BasePart") and not LocalVisualCache.Chams[part] then
+                LocalVisualCache.Chams[part] = {
+                    Transparency = part.Transparency,
+                    Material = part.Material,
+                    Color = part.Color
+                }
+                part.Transparency = LocalVisualSettings.Chams.Transparency
+                part.Material = LocalVisualSettings.Chams.Material
+                part.Color = LocalVisualSettings.Chams.Color
+            end
+        end
+    else
+        for part, data in pairs(LocalVisualCache.Chams) do
+            if part and part.Parent then
+                part.Transparency = data.Transparency
+                part.Material = data.Material
+                part.Color = data.Color
+            end
+        end
+        LocalVisualCache.Chams = {}
+    end
+end
+
+
+
+local LocalChamsGroup = Tabs.Visual:AddLeftGroupbox("Chams")
+
+LocalChamsGroup:AddToggle("LocalChamsEnabled", {
+    Text = "Enable Local Chams",
+    Default = false,
+    Callback = function(v) 
+        LocalVisualSettings.Enabled = v
+        if not v then UpdateLocalVisuals() end
+    end
 })
+
+LocalChamsGroup:AddToggle("ChamsToggle", {
+    Text = "Chams",
+    Default = false,
+    Callback = function(v) 
+        LocalVisualSettings.Chams.Enabled = v
+        UpdateLocalVisuals()
+    end
+}):AddColorPicker("ChamsColor", {
+    Default = LocalVisualSettings.Chams.Color,
+    Title = "Chams Color",
+    Callback = function(c) 
+        LocalVisualSettings.Chams.Color = c
+        UpdateLocalVisuals()
+    end
+})
+
+LocalChamsGroup:AddSlider("ChamsTransparency", {
+    Text = "Transparency",
+    Default = LocalVisualSettings.Chams.Transparency * 100,
+    Min = 0,
+    Max = 100,
+    Rounding = 1,
+    Suffix = "%",
+    Callback = function(v) 
+        LocalVisualSettings.Chams.Transparency = v / 100
+        UpdateLocalVisuals()
+    end
+})
+
+LocalChamsGroup:AddDropdown("ChamsMaterial", {
+    Values = {"ForceField", "Neon", "Glass", "SmoothPlastic"},
+    Default = "ForceField",
+    Text = "Material",
+    Callback = function(v)
+        if v == "ForceField" then
+            LocalVisualSettings.Chams.Material = Enum.Material.ForceField
+        elseif v == "Neon" then
+            LocalVisualSettings.Chams.Material = Enum.Material.Neon
+        elseif v == "Glass" then
+            LocalVisualSettings.Chams.Material = Enum.Material.Glass
+        elseif v == "SmoothPlastic" then
+            LocalVisualSettings.Chams.Material = Enum.Material.SmoothPlastic
+        end
+        UpdateLocalVisuals()
+    end
+})
+
+LocalPlayer.CharacterAdded:Connect(function()
+    if LocalVisualSettings.Enabled and LocalVisualSettings.Chams.Enabled then
+        task.wait(0.5)
+        UpdateLocalVisuals()
+    end
+end)
+
+RunService.RenderStepped:Connect(UpdateLocalVisuals)
+local UIGroup = Tabs.UI:AddLeftGroupbox("UI Settings")
 
 UIGroup:AddToggle("CustomCursor", {
     Text = "Custom Cursor",
