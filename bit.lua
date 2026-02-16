@@ -2127,7 +2127,7 @@ local function UpdateWorld()
     Lighting.FogColor = WorldSettings.FogColor
     Lighting.FogStart = WorldSettings.FogStart
     Lighting.FogEnd = WorldSettings.FogEnd
-    Lighting.FogEnabled = WorldSettings.FogEnabled
+   -- Lighting.FogEnabled = WorldSettings.FogEnabled
     Lighting.GlobalShadows = WorldSettings.GlobalShadows
 end
 
